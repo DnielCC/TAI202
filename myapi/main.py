@@ -1,9 +1,14 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, status, HTTPException
 from typing import Optional 
 import asyncio
 
 app = FastAPI()
 
+usuarios=[
+    {"id":1,"nombre":"Fany","edad":21},
+    {"id":2,"nombre":"Ali","edad":21},
+    {"id":3,"nombre":"Dulce","edad":21},
+]
 
 @app.get("/")
 async def holamundo(): 
@@ -15,21 +20,74 @@ async def bienvenido():
     return {"mensaje": "Bienvenido a FastAPI"}
 
 
-# --- Práctica 2: Parámetros Obligatorios ---
-# Se definen en la misma URL entre llaves {param}
-@app.get("/usuario/{id}")
-async def leer_usuario(id: int):
-    return {
-        "mensaje": f"Has consultado al usuario con ID: {id}",
-        "tipo_parametro": "obligatorio (path parameter)"
+@app.get("/usuario/detalles")
+async def detalles(nombre: str, edad: int):
+    return {"nombre":nombre, "edad": edad}
+
+
+
+@app.get("/v1/usuarios/",tags=['HTTP CRUD'])
+async def leer_usuarios():
+    return{
+        "total":len(usuarios),
+        "usuarios":usuarios,
+        "status": "200"
     }
 
-# --- Práctica 2: Parámetros Opcionales ---
-# Se definen en los argumentos de la función (query parameters)
-@app.get("/busqueda/")
-async def buscar_item(nombre: str, calificacion: Optional[float] = None):
-    return {
-        "mensaje": f"Buscando: {nombre}",
-        "calificacion_filtro": calificacion if calificacion else "No se proporcionó calificación",
-        "tipo_parametro": "opcional (query parameter)"
+@app.post("/v1/usuarios/",tags=['HTTP CRUD'])
+async def agregar_usuarios(usuario:dict):
+    for usr in usuarios:
+        if usr["id"] == usuario.get("id"):
+            raise HTTPException(
+                status_code=400,
+                detail="El id ya existe"
+            )
+        
+    usuarios.append(usuario)
+    return{
+        "mensaje":"Usuario Creado",
+        "Datos nuevos": usuario,
     }
+
+@app.put("/v1/usuarios/",tags=['HTTP CRUD'])
+async def actualizar_usuario(usuario_id: int, usuario: dict):
+    for usr in usuarios:
+        if usr["id"] == usuario_id:
+            usr.update(usuario)
+            return{
+                "mensaje": "Usuario Actualizado",
+                "Datos actualizados": usr,
+            }
+    raise HTTPException(
+        status_code=404,
+        detail="Usuario no encontrado"
+    )
+
+@app.patch("/v1/usuarios/",tags=['HTTP CRUD'])
+async def modificar_usuario(usuario_id: int, usuario: dict):
+    for usr in usuarios:
+        if usr["id"] == usuario_id:
+            usr.update(usuario)
+            return{
+                "mensaje": "Usuario Modificado",
+                "Datos modificados": usr,
+            }
+    raise HTTPException(
+        status_code=404,
+        detail="Usuario no encontrado"
+    )
+
+@app.delete("/v1/usuarios/1",tags=['HTTP CRUD'])
+async def eliminar_usuario(usuario_id: int):
+    for i, usr in enumerate(usuarios):
+        if usr["id"] == usuario_id:
+            usuarios.pop(i)
+            return{
+                "mensaje": "Usuario Eliminado",
+                "id eliminado": usuario_id,
+            }
+    raise HTTPException(
+        status_code=404,
+        detail="Usuario no encontrado"
+    )
+
