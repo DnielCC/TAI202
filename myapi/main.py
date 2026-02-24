@@ -1,8 +1,19 @@
 from fastapi import FastAPI, status, HTTPException
-from typing import Optional 
+from fastapi.middleware.cors import CORSMiddleware
 import asyncio
+from typing import Optional
+from pydantic import BaseModel,Field 
 
 app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 usuarios=[
     {"id":1,"nombre":"Fany","edad":21},
@@ -34,20 +45,26 @@ async def leer_usuarios():
         "status": "200"
     }
 
+
+class crear_usuario(BaseModel):
+    id:int=Field(...,gt=0, description="Identificador de usuario") 
+    nombre:str=Field(..., min_length=3, max_length=50, example="Nombre")
+    edad:int=Field(..., gt=1, le=123, description="Edad ", example=30)
+
 @app.post("/v1/usuarios/",tags=['HTTP CRUD'])
-async def agregar_usuarios(usuario:dict):
+async def agregar_usuarios(usuario:crear_usuario):
     for usr in usuarios:
-        if usr["id"] == usuario.get("id"):
+        if usr["id"] == usuario.id: 
             raise HTTPException(
                 status_code=400,
-                detail="El id ya existe"
+                detail="El usuario con este ID ya existe"
             )
-        
     usuarios.append(usuario)
-    return{
-        "mensaje":"Usuario Creado",
-        "Datos nuevos": usuario,
+    return {
+        "mensaje":"Usuario Agregado",
+        "Datos nuevos":usuario
     }
+
 
 @app.put("/v1/usuarios/",tags=['HTTP CRUD'])
 async def actualizar_usuario(usuario_id: int, usuario: dict):
@@ -77,7 +94,7 @@ async def modificar_usuario(usuario_id: int, usuario: dict):
         detail="Usuario no encontrado"
     )
 
-@app.delete("/v1/usuarios/1",tags=['HTTP CRUD'])
+@app.delete("/v1/usuarios/",tags=['HTTP CRUD'])
 async def eliminar_usuario(usuario_id: int):
     for i, usr in enumerate(usuarios):
         if usr["id"] == usuario_id:
