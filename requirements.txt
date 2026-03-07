@@ -1,2 +1,7 @@
-uvicorn[standard]
 fastapi
+uvicorn
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+flask
+requests
