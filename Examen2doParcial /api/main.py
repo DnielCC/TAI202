@@ -10,10 +10,14 @@ import secrets
 app = FastAPI()
 reservaciones=[
     {
-    "id":1,
+    "id":"1",
     "nombre":"eros",
-    "fecha":"26-01-10",
-    "numero de personas":3
+    "apellido_paterno":"cano",
+    "apellido_materno":"cabrera",
+    "numero_cuenta":"1231521",
+    "rol":"alumno",
+    "created_at":"2026-03-04T08:19:49",
+    "updated_at":"2026-03-04T08:19:49"
 }
 ]
 
@@ -45,7 +49,7 @@ def validar_no_futura(cls,v: datetime):
     
     
 
-@app.get("/reservaciones/listado")
+@app.get("/alumnos")
 async def listar_reservaciones():
     return{
         "total_reservaciones":len(reservaciones),

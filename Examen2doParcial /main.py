@@ -1,80 +1,45 @@
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from pydantic import BaseModel, Field, field_validator
-from datetime import date
-from typing import List
+from fastapi import FastAPI, status, HTTPException, Depends
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
+from pydantic import BaseModel
+
+
+SECRET_KEY = "UPQ_SISTEMAS_KEY" 
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30  
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token") # Activa el botón Authorize
 
 app = FastAPI()
-security = HTTPBasic()
 
-# --- 1. SEGURIDAD SIMPLE ---
-def validar_usuario(credenciales: HTTPBasicCredentials = Depends(security)):
-    # Usuario y contraseña quemados para el ejemplo
-    if credenciales.username != "profe" or credenciales.password != "1234":
-        raise HTTPException(status_code=401, detail="No autorizado")
-    return credenciales.username
 
-# --- 2. MODELO DE DATOS (PYDANTIC) ---
-class Reservacion(BaseModel):
-    id: int
-    nombre: str = Field(..., min_length=2)
-    apellido: str = Field(..., min_length=2)
-    fecha: date
-    estado: str = "Activa" # Estados: Activa, Pendiente Cancelar, Cancelada
+users_db = {"admin": {"username": "admin", "password": "123"}}
 
-    # Validación: Solo un nombre y un apellido
-    @field_validator("nombre", "apellido")
-    @classmethod
-    def validar_un_solo_termino(cls, valor: str):
-        if len(valor.split()) > 1:
-            raise ValueError("Solo se permite UN nombre/apellido (sin espacios)")
-        return valor
+# --- b. Generación de Tokens ---
+def create_token(data: dict):
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    return jwt.encode({**data, "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
 
-# --- 3. BASE DE DATOS EN MEMORIA ---
-db: List[Reservacion] = []
 
-# --- 4. ENDPOINTS ---
+async def check_token(token: str = Depends(oauth2_scheme)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload.get("sub")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token no válido")
 
-# Crear reservación
-@app.post("/reservar", dependencies=[Depends(validar_usuario)])
-def crear(res: Reservacion):
-    db.append(res)
-    return {"msg": "Registrada", "data": res}
+@app.post("/token")
+async def login(form: OAuth2PasswordRequestForm = Depends()):
+    user = users_db.get(form.username)
+    if not user or user["password"] != form.password:
+        raise HTTPException(status_code=400, detail="Error de login")
+    return {"access_token": create_token({"sub": user["username"]}), "token_type": "bearer"}
 
-# Listar todas
-@app.get("/reservaciones", dependencies=[Depends(validar_usuario)])
-def listar():
-    return db
+@app.put("/v1/usuarios/", tags=['HTTP CRUD'])
+async def update(id: int, user=Depends(check_token)): 
+    return {"mensaje": "Actualizado"}
 
-# Buscar por ID
-@app.get("/reservacion/{id_buscado}", dependencies=[Depends(validar_usuario)])
-def buscar(id_buscado: int):
-    for r in db:
-        if r.id == id_buscado:
-            return r
-    raise HTTPException(status_code=404, detail="No encontrada")
-
-# Mostrar lista de clientes únicos
-@app.get("/clientes", dependencies=[Depends(validar_usuario)])
-def mostrar_clientes():
-    # Creamos un set para evitar duplicados
-    clientes = {f"{r.nombre} {r.apellido}" for r in db}
-    return {"clientes": list(clientes)}
-
-# PASO 1: Solicitar cancelación
-@app.put("/cancelar/solicitar/{id_res}", dependencies=[Depends(validar_usuario)])
-def solicitar_cancelacion(id_res: int):
-    for r in db:
-        if r.id == id_res:
-            r.estado = "Pendiente Cancelar"
-            return {"msg": "Solicitud recibida"}
-    raise HTTPException(status_code=404, detail="No encontrada")
-
-# PASO 2: Confirmar cancelación
-@app.put("/cancelar/confirmar/{id_res}", dependencies=[Depends(validar_usuario)])
-def confirmar_cancelacion(id_res: int):
-    for r in db:
-        if r.id == id_res and r.estado == "Pendiente Cancelar":
-            r.estado = "Cancelada"
-            return {"msg": "Cancelación confirmada"}
-    raise HTTPException(status_code=400, detail="No se puede confirmar o no existe")
+@app.delete("/v1/usuarios/", tags=['HTTP CRUD'])
+async def delete(id: int, user=Depends(check_token)):
+    return {"mensaje": "Eliminado"}
