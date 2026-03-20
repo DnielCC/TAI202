@@ -4,4 +4,6 @@ python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
 flask
+sqlalchemy
+psycopg2-binary 
 requests
