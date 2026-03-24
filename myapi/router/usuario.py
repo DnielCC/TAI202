@@ -2,7 +2,9 @@ from fastapi import FastAPI, status, HTTPException, Depends, APIRouter
 from myapi.models.usuario import crear_usuario
 from myapi.data.database import usuarios 
 from myapi.security.auth import verificar_peticion
-
+from sqlalchemy.orm import Session
+from myapi.data.db import get_db
+from myapi.data.usuarios import usuario as dbUsuario
 
 router=APIRouter(
     prefix="/v1/usuarios",
@@ -12,26 +14,25 @@ router=APIRouter(
 
 
 @router.get("/",tags=['HTTP CRUD'])
-async def leer_usuarios():
+async def leer_usuarios(db:Session= Depends(get_db)):
+    queryUsuarios= db.query(dbUsuario).all()
     return{
-        "total":len(usuarios),
-        "usuarios":usuarios,
+        "total":len(queryUsuarios),
+        "usuarios":queryUsuarios,
         "status": "200"
     }
 
     
 @router.post("/",tags=['HTTP CRUD'])
-async def agregar_usuarios(usuario:crear_usuario):
-    for usr in usuarios:
-        if usr["id"] == usuario.id: 
-            raise HTTPException(
-                status_code=400,
-                detail="El usuario con este ID ya existe"
-            )
-    usuarios.append(usuario)
+async def agregar_usuarios(usuarioP:crear_usuario,db:Session= Depends(get_db)):
+    nuevoU= dbUsuario(nombre= usuarioP.nombre, edad= usuarioP.edad)
+    db.add(nuevoU)
+    db.commit()
+    db.refresh(nuevoU)
+     
     return {
         "mensaje":"Usuario Agregado",
-        "Datos nuevos":usuario
+        "Datos nuevos":usuarioP
     }
 
 
