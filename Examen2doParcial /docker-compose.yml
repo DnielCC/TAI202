@@ -1,0 +1,25 @@
+services:
+  api:
+    # Indicamos que construya la imagen desde el Dockerfile en el directorio actual (.)
+    build: .
+    
+    # Le damos un nombre específico al contenedor para identificarlo más fácilmente en la consola
+    container_name: Server_FastAPI
+    
+    # Mapea el puerto 5000 de la máquina anfitriona (izquierda) al puerto 5000 del contenedor (derecha)
+    ports:
+      - "5000:5000"
+      
+    # Sincroniza el directorio actual (./) de tu máquina con la carpeta /app del contenedor (donde está configurado WORKDIR en Dockerfile)
+    # Esto permite que los cambios en tu código local se reflejen inmediatamente dentro del contenedor, ideal con el --reload de uvicorn
+    volumes:
+      - ./:/app
+      
+    # Variables de entorno
+    # PYTHONUNBUFFERED=1 obliga a Python a no usar un búfer para la salida estándar, lo que permite ver los logs (print o logging) en tiempo real
+    environment:
+      - PYTHONUNBUFFERED=1
+      
+    # Configura la política de reinicio: si el contenedor se cae por un error, se reiniciará automáticamente, 
+    # a menos que tú lo detengas explícitamente (ej: usando docker-compose down o stop)
+    restart: unless-stopped
