@@ -43,3 +43,10 @@ class Reservacion(BaseModel):
             raise ValueError("Horario no disponible. Solo atendemos de 1-2 PM y 4-10 PM.")
 
         return v
+
+
+    #/Solo números (e.g., ID de 5 dígitos): pattern=r"^\d{5}$"
+
+#Solo letras (sin espacios): pattern=r"^[a-zA-Z]+$"
+
+#Formato de teléfono simple: pattern=r"^\d{10}$"#/
